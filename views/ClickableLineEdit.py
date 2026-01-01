@@ -1,4 +1,6 @@
+from typing import Optional
 from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QMouseEvent
 from qfluentwidgets import LineEdit
 
 
@@ -8,11 +10,11 @@ class ClickableLineEdit(LineEdit):
     """
     clicked = pyqtSignal(int)
 
-    def __init__(self, index, parent=None):
+    def __init__(self, index: int, parent: Optional[LineEdit] = None):
         super().__init__(parent)
         self.index = index
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self.index)
         super().mousePressEvent(event)
