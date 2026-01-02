@@ -133,7 +133,7 @@ RegisterAnalysisFluentVer/
 
 ## 许可证
 
-本项目采用 GPLv3 许可证，详见 LICENSE 文件。
+本项目采用 Apache-2.0 许可证，详见 LICENSE 文件。
 
 ## 开发说明
 
