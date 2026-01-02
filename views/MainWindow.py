@@ -295,7 +295,7 @@ class MainWindow(FluentWidget):
         main_layout = QVBoxLayout(main_panel)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(25)  # 调整行间距，使其更合理
+        main_layout.setSpacing(10)  # 进一步减小行间距，使布局更紧凑
         
         # 设置主面板的大小策略，使其能随窗口伸缩
         from PyQt5.QtWidgets import QSizePolicy
@@ -306,20 +306,21 @@ class MainWindow(FluentWidget):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
-            row_layout.setSpacing(8)  # 减小卡片间距，使布局更紧凑
+            row_layout.setSpacing(3)  # 进一步减小卡片间距，使布局更紧凑
             row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # 居中对齐
+            row_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
             start_digit = i * 4
             end_digit = (i + 1) * 4
 
             for digit in range(start_digit, end_digit):
                 digit_card = CardWidget()
-                # 设置卡片的大小策略，让它能够根据窗口大小自动调整
+                # 设置卡片的大小策略，让它能够根据窗口大小自动调整，同时保持合适的比例
                 from PyQt5.QtWidgets import QSizePolicy
                 digit_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
                 digit_layout = QGridLayout(digit_card)
-                digit_layout.setContentsMargins(15, 15, 15, 15)  # 增大卡片内边距
-                digit_layout.setSpacing(12)  # 增大卡片内元素间距
+                digit_layout.setContentsMargins(8, 8, 8, 8)  # 减小卡片内边距，让卡片更紧凑
+                digit_layout.setSpacing(8)  # 减小卡片内元素间距，让内容更紧凑
                 digit_num = self.maxDigit - digit - 1
 
                 title_label = BodyLabel(f"数位 {digit_num}")
@@ -335,16 +336,13 @@ class MainWindow(FluentWidget):
                     bit_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     setFont(bit_label, 14)  # 增大比特位编号字体大小
 
-                    bit_entry = ClickableLineEdit(idx)
+                    bit_entry = ClickableLineEdit(idx, self)
                     bit_entry.setReadOnly(True)
                     bit_entry.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    bit_entry.setMinimumWidth(65)  # 设置最小宽度，允许动态调整
-                    bit_entry.setMinimumHeight(75)  # 设置最小高度，允许动态调整
-                    # 使用SizePolicy让输入框能够根据窗口大小自动调整
-                    from PyQt5.QtWidgets import QSizePolicy
-                    bit_entry.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+                    bit_entry.setFixedWidth(60)  # 固定宽度，确保显示清晰
+                    bit_entry.setFixedHeight(60)  # 固定高度，确保显示清晰
                     bit_entry.clicked.connect(lambda _, i=idx: self.handle_bit_click(i))
-                    setFont(bit_entry, 24, weight=700)  # 进一步增大字体大小并加粗
+                    setFont(bit_entry, 16, weight=700)  # 设置合适的字体大小，确保显示清晰
 
                     self.bitEntry.append(bit_entry)
 
