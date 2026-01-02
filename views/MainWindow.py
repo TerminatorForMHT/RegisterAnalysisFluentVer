@@ -148,10 +148,7 @@ class MainWindow(FluentWidget):
             entry: 要格式化的比特输入框
             val: 比特值（0或1）
         """
-        if val == 1:
-            entry.setStyleSheet(f"background-color: {BIT_HIGH_COLOR}; color: black;")
-        else:
-            entry.setStyleSheet(BIT_LOW_COLOR)
+        entry.updateStyle(val == 1)
 
     def clear_bits(self) -> None:
         """
@@ -298,7 +295,12 @@ class MainWindow(FluentWidget):
         main_layout = QVBoxLayout(main_panel)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(15)  # 增大行间距，让各行之间更有层次感
+        main_layout.setSpacing(25)  # 调整行间距，使其更合理
+        
+        # 设置主面板的大小策略，使其能随窗口伸缩
+        from PyQt5.QtWidgets import QSizePolicy
+        main_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)  # 垂直居中对齐
         
         for i in range(4):
             row_widget = QWidget()
@@ -312,6 +314,9 @@ class MainWindow(FluentWidget):
 
             for digit in range(start_digit, end_digit):
                 digit_card = CardWidget()
+                # 设置卡片的大小策略，让它能够根据窗口大小自动调整
+                from PyQt5.QtWidgets import QSizePolicy
+                digit_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
                 digit_layout = QGridLayout(digit_card)
                 digit_layout.setContentsMargins(15, 15, 15, 15)  # 增大卡片内边距
                 digit_layout.setSpacing(12)  # 增大卡片内元素间距
@@ -319,7 +324,7 @@ class MainWindow(FluentWidget):
 
                 title_label = BodyLabel(f"数位 {digit_num}")
                 title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                setFont(title_label, 14)  # 增大标题字体大小
+                setFont(title_label, 16)  # 增大标题字体大小
                 digit_layout.addWidget(title_label, 0, 0, 1, 4)
 
                 for bit in range(self.maxBit):
@@ -328,15 +333,18 @@ class MainWindow(FluentWidget):
 
                     bit_label = BodyLabel(str(bit_num))
                     bit_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    setFont(bit_label, 12)  # 增大比特位编号字体大小
+                    setFont(bit_label, 14)  # 增大比特位编号字体大小
 
                     bit_entry = ClickableLineEdit(idx)
                     bit_entry.setReadOnly(True)
                     bit_entry.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    bit_entry.setFixedWidth(50)  # 进一步增大比特位输入框宽度
-                    bit_entry.setFixedHeight(55)  # 进一步增大比特位输入框高度，增加卡片整体高度
+                    bit_entry.setMinimumWidth(65)  # 设置最小宽度，允许动态调整
+                    bit_entry.setMinimumHeight(75)  # 设置最小高度，允许动态调整
+                    # 使用SizePolicy让输入框能够根据窗口大小自动调整
+                    from PyQt5.QtWidgets import QSizePolicy
+                    bit_entry.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
                     bit_entry.clicked.connect(lambda _, i=idx: self.handle_bit_click(i))
-                    setFont(bit_entry, 18, weight=700)  # 进一步增大字体大小并加粗
+                    setFont(bit_entry, 24, weight=700)  # 进一步增大字体大小并加粗
 
                     self.bitEntry.append(bit_entry)
 
@@ -347,8 +355,8 @@ class MainWindow(FluentWidget):
 
             main_layout.addWidget(row_widget)
         
-        # 将主面板添加到窗口的主布局中，设置拉伸因子让它占据更多空间
-        self.main_layout.addWidget(main_panel, stretch=1)
+        # 将主面板添加到窗口的主布局中，设置更高的拉伸因子让它占据大部分空间
+        self.main_layout.addWidget(main_panel, stretch=3)
 
     def init_controls_panel(self) -> None:
         """
