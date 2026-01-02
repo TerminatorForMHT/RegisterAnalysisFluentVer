@@ -1,8 +1,8 @@
 import sys
 from typing import Optional
-from PyQt6.QtCore import Qt, QEvent, QRegularExpression
-from PyQt6.QtGui import QIcon, QRegularExpressionValidator
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QGridLayout
+from PyQt5.QtCore import Qt, QEvent, QRegularExpression, QTimer
+from PyQt5.QtGui import QIcon, QRegularExpressionValidator
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QGridLayout
 
 from config import (
     APP_NAME, MAIN_ICON, WINDOW_WIDTH, WINDOW_HEIGHT,
@@ -23,14 +23,18 @@ from qfluentwidgets import (
     setTheme,
     Theme,
     InfoBar,
-    InfoBarPosition
+    InfoBarPosition,
+    FluentWindow,
+    FluentWidget,
+    SystemThemeListener,
+    isDarkTheme
 )
 from qfluentwidgets.common.config import qconfig
-from qfluentwidgets.components.widgets.frameless_window import FramelessWindow
+from PyQt5.QtCore import QTimer
 from views.ClickableLineEdit import ClickableLineEdit
 
 
-class MainWindow(FramelessWindow):
+class MainWindow(FluentWidget):
     """ Fluent window with a bitwise analyzer """
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -38,11 +42,13 @@ class MainWindow(FramelessWindow):
         super().__init__(parent)
 
         # ✅ 自动跟随系统主题（深色/浅色）
+        from qfluentwidgets import Theme
         setTheme(Theme.AUTO)  # 这是关键！
 
+        # 创建主题监听器
+        self.themeListener = SystemThemeListener(self)
+
         # 注意：启用 Mica 后，不要手动设置窗口背景色！
-        self._isMaximizedFake = False
-        self._normalGeometry = None
 
         # 使用配置文件中的常量
         self.maxDigit = MAX_DIGIT
@@ -53,46 +59,26 @@ class MainWindow(FramelessWindow):
 
         self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
 
+        # 设置窗口图标和标题
+        self.setWindowIcon(QIcon(MAIN_ICON))
+        self.setWindowTitle(APP_NAME)
+
         # 顶层布局改为垂直布局，结构更清晰
         self.main_layout = QVBoxLayout(self)
+        # 留出标题栏的空间
+        self.main_layout.setContentsMargins(0, self.titleBar.height(), 0, 0)
+        self.main_layout.setSpacing(10)
 
         self.init_main_panel()
         self.init_controls_panel()
 
-        # 标题栏
-        self.setTitleBar(FluentTitleBar(self))
-        self.titleBar.raise_()
-        self.titleBar.setTitle(APP_NAME)
-        self.titleBar.setIcon(MAIN_ICON)
-        self.titleBar.setContentsMargins(15, 0, 0, 0)
-        self.titleBar.maxBtn.hide()
-        self.setWindowIcon(QIcon(MAIN_ICON))
+        # 连接主题变化信号，确保界面能响应系统主题变化
+        qconfig.themeChanged.connect(self.on_theme_changed)
 
-        # 自适应设置主布局与标题栏的垂直间距
-        self._applyLayoutSpacing()
+        # 启动主题监听器
+        self.themeListener.start()
 
         self.clear_bits()
-
-    def _applyLayoutSpacing(self, extra: int = 12) -> None:
-        """
-        应用布局间距，确保主布局与标题栏之间有适当的间距。
-        
-        Args:
-            extra: 额外的间距值
-        """
-        top_gap = self.titleBar.height() + extra if hasattr(self, "titleBar") and self.titleBar else 48 + extra
-        self.main_layout.setContentsMargins(12, top_gap, 12, 12)
-        self.main_layout.setSpacing(12)
-
-    def resizeEvent(self, e: QEvent) -> None:
-        """
-        窗口大小改变事件处理函数。
-        
-        Args:
-            e: 窗口大小改变事件
-        """
-        super().resizeEvent(e)
-        self._applyLayoutSpacing()
 
     def shift_left_bits(self) -> None:
         """
@@ -307,25 +293,33 @@ class MainWindow(FramelessWindow):
         创建16个数位卡片，每个卡片包含4个比特位，
         并将它们添加到主布局中。
         """
-        for i in range(2):
+        # 创建主面板容器
+        main_panel = QWidget()
+        main_layout = QVBoxLayout(main_panel)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(15)  # 增大行间距，让各行之间更有层次感
+        
+        for i in range(4):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
-            row_layout.setSpacing(15)  # 增加卡片间距
+            row_layout.setSpacing(8)  # 减小卡片间距，使布局更紧凑
+            row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # 居中对齐
 
-            start_digit = 8 if i == 1 else 0
-            end_digit = 16 if i == 1 else 8
+            start_digit = i * 4
+            end_digit = (i + 1) * 4
 
             for digit in range(start_digit, end_digit):
                 digit_card = CardWidget()
                 digit_layout = QGridLayout(digit_card)
-                digit_layout.setContentsMargins(12, 12, 12, 12)  # 增加卡片内边距
-                digit_layout.setSpacing(8)  # 调整卡片内元素间距
+                digit_layout.setContentsMargins(15, 15, 15, 15)  # 增大卡片内边距
+                digit_layout.setSpacing(12)  # 增大卡片内元素间距
                 digit_num = self.maxDigit - digit - 1
 
                 title_label = BodyLabel(f"数位 {digit_num}")
                 title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                setFont(title_label, 12)  # 调整标题字体大小
+                setFont(title_label, 14)  # 增大标题字体大小
                 digit_layout.addWidget(title_label, 0, 0, 1, 4)
 
                 for bit in range(self.maxBit):
@@ -334,15 +328,15 @@ class MainWindow(FramelessWindow):
 
                     bit_label = BodyLabel(str(bit_num))
                     bit_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    setFont(bit_label, 11)  # 调整比特位编号字体大小
+                    setFont(bit_label, 12)  # 增大比特位编号字体大小
 
                     bit_entry = ClickableLineEdit(idx)
                     bit_entry.setReadOnly(True)
                     bit_entry.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    bit_entry.setFixedWidth(40)  # 增大比特位输入框宽度
-                    bit_entry.setFixedHeight(35)  # 增大比特位输入框高度
+                    bit_entry.setFixedWidth(50)  # 进一步增大比特位输入框宽度
+                    bit_entry.setFixedHeight(55)  # 进一步增大比特位输入框高度，增加卡片整体高度
                     bit_entry.clicked.connect(lambda _, i=idx: self.handle_bit_click(i))
-                    setFont(bit_entry, 14, weight=700)  # 增大字体大小并加粗
+                    setFont(bit_entry, 18, weight=700)  # 进一步增大字体大小并加粗
 
                     self.bitEntry.append(bit_entry)
 
@@ -351,7 +345,10 @@ class MainWindow(FramelessWindow):
 
                 row_layout.addWidget(digit_card)
 
-            self.main_layout.addWidget(row_widget)
+            main_layout.addWidget(row_widget)
+        
+        # 将主面板添加到窗口的主布局中，设置拉伸因子让它占据更多空间
+        self.main_layout.addWidget(main_panel, stretch=1)
 
     def init_controls_panel(self) -> None:
         """
@@ -361,17 +358,24 @@ class MainWindow(FramelessWindow):
         并将其添加到主布局中。
         """
         controls_widget = QWidget()
-        controls_layout = QHBoxLayout(controls_widget)
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-        controls_layout.setSpacing(12)
+        controls_layout = QGridLayout(controls_widget)
+        controls_layout.setContentsMargins(5, 5, 5, 5)
+        controls_layout.setSpacing(8)
 
         type_card = self.init_type_button()
         result_card = self.init_result_panel()
         func_widget = self.init_func_button()
 
-        controls_layout.addWidget(type_card, stretch=2)
-        controls_layout.addWidget(result_card, stretch=5)
-        controls_layout.addWidget(func_widget, stretch=1)
+        # 使用GridLayout排列组件，使其更紧凑
+        controls_layout.addWidget(type_card, 0, 0)
+        controls_layout.addWidget(result_card, 0, 1, 1, 2)
+        controls_layout.addWidget(func_widget, 0, 3)
+        
+        # 设置列拉伸比例，让结果面板占据更多空间
+        controls_layout.setColumnStretch(0, 1)
+        controls_layout.setColumnStretch(1, 2)
+        controls_layout.setColumnStretch(2, 1)
+        controls_layout.setColumnStretch(3, 1)
 
         self.main_layout.addWidget(controls_widget)
 
@@ -387,32 +391,38 @@ class MainWindow(FramelessWindow):
         """
         result_card = CardWidget()
         result_layout = QVBoxLayout(result_card)
-
-        header_layout = QHBoxLayout()
-        header_layout.addWidget(BodyLabel("最高有效位 (MSB)"))
-        header_layout.addStretch(1)
-        header_layout.addWidget(BodyLabel("最低有效位 (LSB)"))
+        result_layout.setContentsMargins(5, 5, 5, 5)  # 减小面板内边距
+        result_layout.setSpacing(5)  # 减小组件间距，使布局更紧凑
 
         self.wordEntry = LineEdit()
         self.wordEntry.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        setFont(self.wordEntry, 16)
+        setFont(self.wordEntry, 14)  # 调整结果显示字体大小
+        self.wordEntry.setMinimumHeight(35)  # 调整结果输入框高度
         self.wordEntry.textEdited.connect(self.calculate_bits)
         # 设置初始输入验证器
         self._update_input_validator()
 
         shift_layout = QHBoxLayout()
         shlButton = PushButton("左移")
+        setFont(shlButton, 12)  # 增大按钮字体大小
+        shlButton.setMinimumHeight(30)  # 增大按钮高度
+        shlButton.setFixedSize(70, 30)  # 固定按钮大小
         shlButton.clicked.connect(self.shift_left_bits)
 
         self.shEntry = LineEdit()
         self.shEntry.setText("1")
-        self.shEntry.setFixedWidth(50)
+        self.shEntry.setFixedWidth(40)  # 增大宽度
+        self.shEntry.setMinimumHeight(30)  # 增大高度
         self.shEntry.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        setFont(self.shEntry, 12)  # 增大字体大小
         # 设置移位输入验证器，只允许数字
         shift_validator = QRegularExpressionValidator(QRegularExpression(r"[0-9]*"), self.shEntry)
         self.shEntry.setValidator(shift_validator)
 
         sfrButton = PushButton("右移")
+        setFont(sfrButton, 12)  # 增大按钮字体大小
+        sfrButton.setMinimumHeight(30)  # 增大按钮高度
+        sfrButton.setFixedSize(70, 30)  # 固定按钮大小
         sfrButton.clicked.connect(self.shift_right_bits)
 
         shift_layout.addWidget(shlButton)
@@ -421,7 +431,6 @@ class MainWindow(FramelessWindow):
         shift_layout.addStretch(1)
         shift_layout.addWidget(sfrButton)
 
-        result_layout.addLayout(header_layout)
         result_layout.addWidget(self.wordEntry)
         result_layout.addLayout(shift_layout)
 
@@ -438,14 +447,22 @@ class MainWindow(FramelessWindow):
         """
         type_card = CardWidget()
         type_layout = QVBoxLayout(type_card)
-        type_layout.setSpacing(10)
+        type_layout.setSpacing(6)  # 大幅度减小间距
+        type_layout.setContentsMargins(8, 8, 8, 8)  # 设置内边距
 
         title_label = BodyLabel("进制")
+        setFont(title_label, 10)  # 大幅度降低标题字体大小
         type_layout.addWidget(title_label)
 
         self.hexRadio = RadioButton("十六进制", type_card)
+        setFont(self.hexRadio, 9)  # 大幅度降低单选按钮字体大小
+        self.hexRadio.setMaximumHeight(20)  # 大幅度降低单选按钮高度
         self.decRadio = RadioButton("十进制", type_card)
+        setFont(self.decRadio, 9)  # 大幅度降低单选按钮字体大小
+        self.decRadio.setMaximumHeight(20)  # 大幅度降低单选按钮高度
         self.binRadio = RadioButton("二进制", type_card)
+        setFont(self.binRadio, 9)  # 大幅度降低单选按钮字体大小
+        self.binRadio.setMaximumHeight(20)  # 大幅度降低单选按钮高度
 
         self.hexRadio.setChecked(True)
 
@@ -472,11 +489,16 @@ class MainWindow(FramelessWindow):
         func_widget = QWidget()
         func_layout = QVBoxLayout(func_widget)
         func_layout.setContentsMargins(0, 0, 0, 0)
+        func_layout.setSpacing(8)  # 设置间距
 
         clearButton = PushButton("清空")
+        setFont(clearButton, 13)  # 调整按钮字体大小
+        clearButton.setMinimumHeight(35)  # 调整按钮高度
         clearButton.clicked.connect(self.clear_bits)
 
         closeButton = PrimaryPushButton("关闭")
+        setFont(closeButton, 13)  # 调整按钮字体大小
+        closeButton.setMinimumHeight(35)  # 调整按钮高度
         closeButton.clicked.connect(self.close)
 
         func_layout.addWidget(clearButton)
@@ -554,15 +576,39 @@ class MainWindow(FramelessWindow):
                 parent=self
             )
     
+    def closeEvent(self, e):
+        """
+        窗口关闭事件处理函数。
+        
+        确保主题监听器线程正确停止，避免资源泄漏。
+        """
+        # 停止监听器线程
+        self.themeListener.terminate()
+        self.themeListener.deleteLater()
+        super().closeEvent(e)
+
+    def _onThemeChangedFinished(self):
+        """
+        主题变化完成后的回调函数。
+        
+        确保Mica特效在主题变化后正确应用，添加重试机制以提高可靠性。
+        """
+        super()._onThemeChangedFinished()
+
+        # 云母特效启用时需要增加重试机制
+        if self.isMicaEffectEnabled():
+            QTimer.singleShot(100, lambda: self.windowEffect.setMicaEffect(self.winId(), isDarkTheme()))
+
     def on_theme_changed(self) -> None:
         """
         主题变化时的回调函数。
         
         确保Mica效果能在主题变化时正确应用，并更新界面元素。
         """
-        # 主题变化时重新应用Mica效果，确保与当前主题匹配
-        if sys.platform == "win32":
-            self.windowEffect.setMicaEffect(self.winId())
+        # 更新所有自定义组件的样式，确保它们能正确响应主题变化
+        for bit_entry in self.bitEntry:
+            if hasattr(bit_entry, '_updateStyleSheet'):
+                bit_entry._updateStyleSheet()
         
-        # 触发背景色更新，确保界面元素能正确响应主题变化
-        self._updateBackgroundColor()
+        # 如果有其他需要更新的组件，也可以在这里添加
+        pass

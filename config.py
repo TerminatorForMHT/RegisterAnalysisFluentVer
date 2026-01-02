@@ -7,8 +7,8 @@ APP_NAME = "数位分析器"
 MAIN_ICON = str(ROOT_PATH.joinpath('titleico.svg'))
 
 # 窗口配置
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 520
+WINDOW_WIDTH = 1000
+WINDOW_HEIGHT = 720
 
 # 数位配置
 MAX_DIGIT = 16  # 最大数位数量
